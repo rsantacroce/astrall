@@ -1,0 +1,126 @@
+name: Release
+
+# Publicar uma versão:  git tag -a v0.1.0 -m "…" && git push origin v0.1.0
+# A release é publicada direto, e a landing page (site/) passa a apontar para os instaladores dela.
+# "Run workflow" faz um ensaio a partir do branch: gera os instaladores como artefatos, sem release.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  desktop:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS (universal)
+            os: macos-latest
+            targets: aarch64-apple-darwin,x86_64-apple-darwin
+            args: --target universal-apple-darwin
+          - name: Windows (x64)
+            os: windows-latest
+            targets: x86_64-pc-windows-msvc
+            args: ""
+          - name: Windows (ARM64)
+            os: windows-latest
+            targets: aarch64-pc-windows-msvc
+            args: --target aarch64-pc-windows-msvc --bundles nsis
+          - name: Linux (x64)
+            os: ubuntu-22.04
+            targets: x86_64-unknown-linux-gnu
+            args: ""
+          - name: Linux (ARM64)
+            os: ubuntu-22.04-arm
+            targets: aarch64-unknown-linux-gnu
+            args: ""
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.targets }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.name }}
+      - name: Dependências de sistema (Linux)
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libdbus-1-dev
+      - run: npm ci
+      # Sem os segredos de assinatura o build sai sem assinatura (o macOS e o Windows avisam ao abrir).
+      - uses: tauri-apps/tauri-action@v0
+        id: tauri
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          args: ${{ matrix.args }}
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          releaseName: ${{ github.ref_type == 'tag' && format('Astrall {0}', github.ref_name) || '' }}
+          releaseDraft: false
+      - name: Instaladores como artefatos (ensaio)
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: astrall-${{ matrix.name }}
+          path: ${{ steps.tauri.outputs.artifactPaths }}
+
+  # O iOS precisa de assinatura da Apple para gerar o .ipa. Com os três segredos da chave da
+  # App Store Connect o job exporta o .ipa; sem eles, só confirma que o app compila para o simulador.
+  ios:
+    name: iOS
+    runs-on: macos-latest
+    # Ainda experimental: uma falha aqui não derruba a release de desktop.
+    continue-on-error: true
+    env:
+      HAS_SIGNING: ${{ secrets.APPLE_API_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ios
+      - run: brew install xcodegen
+      - run: npm ci
+      - name: Compila para o simulador (sem assinatura)
+        if: env.HAS_SIGNING != 'true'
+        run: npx tauri ios build --target aarch64-sim --debug
+      - name: Gera o .ipa assinado
+        if: env.HAS_SIGNING == 'true'
+        env:
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_PATH: ${{ runner.temp }}/AuthKey.p8
+          APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY_CONTENT }}
+        run: |
+          printf '%s' "$APPLE_API_KEY_CONTENT" > "$APPLE_API_KEY_PATH"
+          npx tauri ios build --export-method app-store-connect
+      - uses: actions/upload-artifact@v4
+        if: env.HAS_SIGNING == 'true'
+        with:
+          name: astrall-ios
+          path: src-tauri/gen/apple/build/**/*.ipa

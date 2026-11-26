@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2d3078"/>
+      <stop offset="1" stop-color="#0b0c22"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#f6dfa6" stop-opacity=".38"/>
+      <stop offset="1" stop-color="#f6dfa6" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8e3ad"/>
+      <stop offset="1" stop-color="#d9a94f"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#bg)"/>
+  <circle cx="512" cy="512" r="250" fill="url(#glow)"/>
+  <g fill="none" stroke="url(#gold)" stroke-linecap="round">
+    <circle cx="512" cy="512" r="318" stroke-width="20"/>
+    <circle cx="512" cy="512" r="212" stroke-width="7" opacity=".55"/>
+    <path d="M741.9 573.6L794.1 587.6 M680.3 680.3L718.5 718.5 M573.6 741.9L587.6 794.1 M450.4 741.9L436.4 794.1 M343.7 680.3L305.5 718.5 M282.1 573.6L229.9 587.6 M282.1 450.4L229.9 436.4 M343.7 343.7L305.5 305.5 M450.4 282.1L436.4 229.9 M573.6 282.1L587.6 229.9 M680.3 343.7L718.5 305.5 M741.9 450.4L794.1 436.4" stroke-width="9" opacity=".55"/>
+  </g>
+  <path d="M512.0 316.0L544.5 479.5L708.0 512.0L544.5 544.5L512.0 708.0L479.5 544.5L316.0 512.0L479.5 479.5Z" fill="url(#gold)"/>
+  <circle cx="762.6" cy="316.2" r="44" fill="#0f1030"/>
+  <circle cx="762.6" cy="316.2" r="30" fill="#f8e3ad"/>
+</svg>

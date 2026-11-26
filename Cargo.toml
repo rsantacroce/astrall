@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+members = ["crates/astro-core", "src-tauri"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-only"
+repository = "https://github.com/rsantacroce/astrall"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+opt-level = "s"

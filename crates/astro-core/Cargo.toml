@@ -1,0 +1,21 @@
+[package]
+name = "astro-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+description = "Cálculo de mapa astral em Rust puro: posições, casas, aspectos e trânsitos"
+
+[dependencies]
+astro = "2.0.0"
+serde = { version = "1", features = ["derive"] }
+sweph-sys = { version = "0.3.0", optional = true }
+
+[dev-dependencies]
+serde_json = "1"
+
+[features]
+# Liga o motor Swiss Ephemeris (código C da Astrodienst, AGPL-3.0). Um binário compilado com
+# este recurso passa a ser AGPL, a menos que haja licença comercial da Astrodienst.
+swisseph = ["dep:sweph-sys"]

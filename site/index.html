@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <title>Astrall: mapa astral calculado no seu computador</title>
+    <meta
+      name="description"
+      content="App de mapa astral natal para macOS, Windows e Linux. Posições calculadas no próprio aparelho com efemérides astronômicas, histórico salvo e leitura por modelo de linguagem local."
+    />
+    <meta property="og:title" content="Astrall" />
+    <meta property="og:description" content="Mapa astral natal calculado no seu computador, com histórico e trânsitos." />
+    <meta property="og:image" content="https://rsantacroce.github.io/astrall/img/mapa.png" />
+    <link rel="icon" type="image/svg+xml" href="img/icon.svg" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0e0f1f;
+        --surface: #161830;
+        --line: #2c2f55;
+        --text: #ebe6d9;
+        --muted: #a3a1bb;
+        --accent: #e2bc6e;
+        --accent-ink: #1a1508;
+        --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+        --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      @media (prefers-color-scheme: light) {
+        :root {
+          color-scheme: light;
+          --bg: #f5f0e4;
+          --surface: #fffcf5;
+          --line: #dcd3bf;
+          --text: #25223d;
+          --muted: #625f7a;
+          --accent: #7a5410;
+          --accent-ink: #fffaf0;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 17px/1.6 var(--sans);
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 68rem;
+        margin: 0 auto;
+        padding: 0 1.5rem;
+      }
+      h1,
+      h2,
+      h3 {
+        font-family: var(--serif);
+        font-weight: 600;
+        line-height: 1.15;
+        margin: 0;
+        text-wrap: balance;
+      }
+      h1 {
+        font-size: clamp(2.2rem, 5.5vw, 3.6rem);
+        letter-spacing: -0.01em;
+      }
+      h2 {
+        font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+      }
+      h3 {
+        font-size: 1.2rem;
+      }
+      p {
+        margin: 0;
+      }
+      a {
+        color: var(--accent);
+        text-underline-offset: 3px;
+      }
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.25rem 0;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        font: 600 1.4rem var(--serif);
+        color: var(--accent);
+        text-decoration: none;
+      }
+      .brand img {
+        width: 44px;
+        height: 44px;
+      }
+      header nav {
+        display: flex;
+        gap: 1.25rem;
+        font-size: 0.95rem;
+      }
+      header nav a {
+        color: var(--muted);
+        text-decoration: none;
+      }
+      header nav a:hover {
+        color: var(--text);
+      }
+      .hero {
+        display: grid;
+        gap: 1.4rem;
+        justify-items: start;
+        padding: 4.5rem 0 3rem;
+        max-width: 46rem;
+      }
+      .lead {
+        font-size: 1.2rem;
+        color: var(--muted);
+        max-width: 38rem;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        min-height: 50px;
+        padding: 0 1.4rem;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        color: var(--text);
+        font-weight: 600;
+        text-decoration: none;
+      }
+      .btn:hover {
+        border-color: var(--accent);
+      }
+      .btn.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--accent-ink);
+      }
+      .note {
+        font-size: 0.9rem;
+        color: var(--muted);
+      }
+      .shot {
+        display: block;
+        width: 100%;
+        height: auto;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        box-shadow: 0 30px 80px rgb(0 0 0 / 0.35);
+      }
+      section {
+        padding: 4.5rem 0;
+      }
+      .split {
+        display: grid;
+        grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+        gap: 3rem;
+        align-items: center;
+      }
+      .split.flip > :first-child {
+        order: 2;
+      }
+      .stack {
+        display: grid;
+        gap: 1rem;
+        align-content: start;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      ul.plain {
+        margin: 0;
+        padding-left: 1.1rem;
+        display: grid;
+        gap: 0.4rem;
+        color: var(--muted);
+      }
+      .figures {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+        margin-top: 2rem;
+        border-top: 1px solid var(--line);
+        padding-top: 2rem;
+      }
+      .figures strong {
+        display: block;
+        font: 600 2rem var(--serif);
+        color: var(--accent);
+        font-variant-numeric: tabular-nums;
+      }
+      .figures span {
+        font-size: 0.92rem;
+        color: var(--muted);
+      }
+      .downloads {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-top: 2rem;
+      }
+      .os {
+        display: grid;
+        gap: 0.6rem;
+        align-content: start;
+        padding: 1.4rem;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+      }
+      .os ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 0.35rem;
+      }
+      .os p {
+        font-size: 0.9rem;
+        color: var(--muted);
+      }
+      code {
+        font: 0.88em ui-monospace, SFMono-Regular, Menlo, monospace;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 0.1em 0.35em;
+        overflow-wrap: anywhere;
+      }
+      footer {
+        border-top: 1px solid var(--line);
+        padding: 2rem 0 3rem;
+        font-size: 0.9rem;
+        color: var(--muted);
+        display: grid;
+        gap: 0.6rem;
+      }
+      @media (max-width: 820px) {
+        .split,
+        .downloads {
+          grid-template-columns: 1fr;
+        }
+        .split.flip > :first-child {
+          order: 0;
+        }
+        .figures {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .hero {
+          padding-top: 2.5rem;
+        }
+        section {
+          padding: 3rem 0;
+        }
+        header nav a:not(.keep) {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <a class="brand" href="./"><img src="img/icon-256.png" alt="" width="44" height="44" />Astrall</a>
+        <nav>
+          <a href="#como-funciona">Como funciona</a>
+          <a href="#precisao">Precisão</a>
+          <a href="#baixar">Baixar</a>
+          <a class="keep" href="https://github.com/rsantacroce/astrall">GitHub</a>
+        </nav>
+      </header>
+
+      <main>
+        <div class="hero">
+          <h1>Seu mapa astral, calculado no seu computador</h1>
+          <p class="lead">
+            O Astrall calcula o mapa natal com efemérides astronômicas, sem depender de internet, e guarda cada mapa e
+            cada leitura no histórico. Código aberto, para macOS, Windows e Linux.
+          </p>
+          <div class="actions">
+            <a class="btn primary" id="main-download" href="https://github.com/rsantacroce/astrall/releases/latest">
+              Baixar o Astrall
+            </a>
+            <a class="btn" href="https://github.com/rsantacroce/astrall">Ver o código</a>
+          </div>
+          <p class="note" id="version-note">Gratuito. Os instaladores ficam na página de versões do GitHub.</p>
+        </div>
+
+        <img
+          class="shot"
+          src="img/mapa.png"
+          width="1180"
+          height="800"
+          alt="Tela do Astrall com a roda do mapa, os cartões de Sol, Lua e Ascendente e a tabela de posições dos planetas."
+        />
+
+        <section id="como-funciona">
+          <div class="split">
+            <div class="stack">
+              <h2>Da entrevista ao mapa, com conferência no meio</h2>
+              <p class="muted">
+                O app pergunta uma coisa de cada vez e, antes de calcular, mostra o que entendeu para você conferir.
+              </p>
+              <ul class="plain">
+                <li>Nome, data, horário, cidade, temas e opções de cálculo.</li>
+                <li>Busca de cidade offline, com 172 mil lugares e suas coordenadas.</li>
+                <li>Fuso e horário de verão em vigor naquela data, com a hora convertida para UTC.</li>
+                <li>Sem horário de nascimento: mapa ao meio-dia, sem casas, com aviso do que fica incerto.</li>
+                <li>Roda do mapa, três pilares, tabela de pontos, casas, aspectos e destaques.</li>
+              </ul>
+            </div>
+            <img
+              class="shot"
+              src="img/transitos.png"
+              width="1180"
+              height="800"
+              loading="lazy"
+              alt="Aba de trânsitos: lista dos aspectos de planetas lentos já em vigor e, abaixo, as datas exatas organizadas por mês."
+            />
+          </div>
+        </section>
+
+        <section>
+          <div class="split flip">
+            <div class="stack">
+              <h2>A leitura é escrita sobre números já calculados</h2>
+              <p class="muted">
+                O modelo de linguagem nunca calcula posições: recebe o mapa pronto e só interpreta. Você escolhe quem
+                escreve.
+              </p>
+              <ul class="plain">
+                <li>Modelo local pelo Ollama, por padrão: a leitura não sai da sua máquina.</li>
+                <li>Claude, OpenAI ou qualquer API compatível, com a chave guardada no cofre do sistema.</li>
+                <li>Sem provedor nenhum: copie o prompt pronto, use em outro chat e cole a resposta de volta.</li>
+                <li>Trânsitos de Júpiter a Plutão nos próximos 18 meses, com a data exata de cada aspecto.</li>
+              </ul>
+            </div>
+            <img
+              class="shot"
+              src="img/leitura.png"
+              width="1180"
+              height="800"
+              loading="lazy"
+              alt="Aba de leitura: seleção de temas, botão de gerar leitura e uma leitura salva com as seções Os três pilares e Destaques do mapa."
+            />
+          </div>
+        </section>
+
+        <section id="precisao">
+          <div class="stack" style="max-width: 44rem">
+            <h2>Precisão conferida com o JPL</h2>
+            <p class="muted">
+              Sol e planetas pela teoria VSOP87, Lua pela ELP-2000/82, Plutão e Quíron por posições do JPL Horizons. Os
+              testes automáticos comparam cada corpo com o JPL Horizons e com a Swiss Ephemeris, de 1900 a 2024.
+            </p>
+          </div>
+          <div class="figures">
+            <div><strong>&lt; 2″</strong><span>Sol e planetas, contra o JPL Horizons</span></div>
+            <div><strong>6″</strong><span>Lua, no pior caso medido</span></div>
+            <div><strong>1,4″</strong><span>cúspides das casas, contra a Swiss Ephemeris</span></div>
+            <div><strong>1800–2199</strong><span>intervalo de datas coberto</span></div>
+          </div>
+        </section>
+
+        <section id="baixar">
+          <div class="stack" style="max-width: 44rem">
+            <h2>Baixar</h2>
+            <p class="muted" id="release-status">
+              Os instaladores são gerados a cada versão pelo GitHub Actions e ficam na
+              <a href="https://github.com/rsantacroce/astrall/releases/latest">página de versões</a>.
+            </p>
+          </div>
+          <div class="downloads">
+            <div class="os">
+              <h3>macOS</h3>
+              <ul id="dl-mac">
+                <li><a href="https://github.com/rsantacroce/astrall/releases/latest">Ver instaladores</a></li>
+              </ul>
+              <p>
+                Apple Silicon e Intel. O app ainda não é assinado pela Apple: se o macOS bloquear a abertura, vá em
+                Ajustes do Sistema, Privacidade e Segurança, e escolha "Abrir Mesmo Assim".
+              </p>
+            </div>
+            <div class="os">
+              <h3>Windows</h3>
+              <ul id="dl-win">
+                <li><a href="https://github.com/rsantacroce/astrall/releases/latest">Ver instaladores</a></li>
+              </ul>
+              <p>
+                Windows 10 e 11. O instalador não é assinado: no aviso do SmartScreen, escolha "Mais informações" e
+                "Executar assim mesmo".
+              </p>
+            </div>
+            <div class="os">
+              <h3>Linux</h3>
+              <ul id="dl-linux">
+                <li><a href="https://github.com/rsantacroce/astrall/releases/latest">Ver instaladores</a></li>
+              </ul>
+              <p>AppImage, .deb e .rpm, para x64 e ARM64.</p>
+            </div>
+          </div>
+          <p class="note" style="margin-top: 1.5rem">
+            A versão para iOS está em desenvolvimento. Para compilar você mesmo:
+            <code>npm install &amp;&amp; npm run tauri build</code>.
+          </p>
+        </section>
+      </main>
+
+      <footer>
+        <p>
+          A astrologia é uma linguagem simbólica para reflexão. Não é previsão garantida nem substitui orientação
+          médica, financeira ou jurídica.
+        </p>
+        <p>
+          Astrall é software livre sob a licença AGPL-3.0. Cidades: GeoNames (CC BY 4.0). Efemérides: VSOP87, ELP-2000 e
+          JPL Horizons. Fusos: banco IANA.
+        </p>
+      </footer>
+    </div>
+
+    <script>
+      // Troca os links genéricos pelos arquivos da versão mais recente publicada no GitHub.
+      // Sem rede, sem versão publicada ou sem JavaScript, os links para a página de versões continuam valendo.
+      (async () => {
+        const res = await fetch("https://api.github.com/repos/rsantacroce/astrall/releases/latest");
+        if (!res.ok) return;
+        const release = await res.json();
+        const assets = (release.assets || []).filter((a) => !/\.(sig|json)$/.test(a.name));
+        const groups = {
+          "dl-mac": [[/\.dmg$/, (n) => (/universal/.test(n) ? "Instalador .dmg (universal)" : "Instalador .dmg")]],
+          "dl-win": [
+            [/x64.*setup\.exe$/, () => "Instalador .exe (x64)"],
+            [/arm64.*setup\.exe$/, () => "Instalador .exe (ARM64)"],
+            [/x64.*\.msi$/, () => "Pacote .msi (x64)"],
+          ],
+          "dl-linux": [
+            [/amd64\.AppImage$/, () => "AppImage (x64)"],
+            [/aarch64\.AppImage$/, () => "AppImage (ARM64)"],
+            [/amd64\.deb$/, () => ".deb (x64)"],
+            [/arm64\.deb$/, () => ".deb (ARM64)"],
+            [/x86_64\.rpm$/, () => ".rpm (x64)"],
+            [/aarch64\.rpm$/, () => ".rpm (ARM64)"],
+          ],
+        };
+        const found = {};
+        for (const [id, rules] of Object.entries(groups)) {
+          const items = [];
+          for (const [pattern, label] of rules) {
+            const asset = assets.find((a) => pattern.test(a.name));
+            if (asset) items.push({ url: asset.browser_download_url, label: label(asset.name) });
+          }
+          if (!items.length) continue;
+          found[id] = items;
+          const list = document.getElementById(id);
+          list.replaceChildren(
+            ...items.map((item) => {
+              const li = document.createElement("li");
+              const a = document.createElement("a");
+              a.href = item.url;
+              a.textContent = item.label;
+              li.append(a);
+              return li;
+            }),
+          );
+        }
+        if (!Object.keys(found).length) return;
+        document.getElementById("version-note").textContent = `Versão ${release.tag_name.replace(/^v/, "")}. Gratuito e de código aberto.`;
+        const platform = navigator.userAgentData?.platform || navigator.platform || "";
+        const mine = /mac/i.test(platform) ? "dl-mac" : /win/i.test(platform) ? "dl-win" : /linux/i.test(platform) ? "dl-linux" : null;
+        const names = { "dl-mac": "macOS", "dl-win": "Windows", "dl-linux": "Linux" };
+        if (mine && found[mine]) {
+          const button = document.getElementById("main-download");
+          button.href = found[mine][0].url;
+          button.textContent = `Baixar para ${names[mine]}`;
+        }
+      })().catch(() => {});
+    </script>
+  </body>
+</html>
