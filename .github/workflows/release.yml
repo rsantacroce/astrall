@@ -2,14 +2,22 @@ name: Release
 
 # Publicar uma versão:  git tag -a v0.1.0 -m "…" && git push origin v0.1.0
 # A release é publicada direto, e a landing page (site/) passa a apontar para os instaladores dela.
-# "Run workflow" faz um ensaio a partir do branch: gera os instaladores como artefatos, sem release.
+# "Run workflow" sem tag faz um ensaio a partir do branch: gera os instaladores como artefatos, sem
+# release. Com uma tag existente, recompila essa tag e repõe os instaladores na release dela.
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag já existente para recompilar e anexar à release (vazio = ensaio)"
+        required: false
+        default: ""
 
 env:
   CARGO_TERM_COLOR: always
+  # Tag da release a preencher; vazio num ensaio.
+  RELEASE_TAG: ${{ inputs.tag || (github.ref_type == 'tag' && github.ref_name) || '' }}
 
 jobs:
   desktop:
@@ -43,6 +51,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -59,24 +69,34 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libdbus-1-dev
       - run: npm ci
-      # Sem os segredos de assinatura o build sai sem assinatura (o macOS e o Windows avisam ao abrir).
-      - uses: tauri-apps/tauri-action@v0
-        id: tauri
+      # As variáveis de assinatura só entram no ambiente quando o segredo existe: uma variável
+      # vazia faz o Tauri tentar assinar com um certificado em branco e falhar. Sem elas o app sai
+      # sem assinatura (o macOS e o Windows avisam ao abrir).
+      - name: Assinatura da Apple, se configurada
+        if: runner.os == 'macOS'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            value="${!name}"
+            if [ -n "$value" ]; then echo "$name=$value" >> "$GITHUB_ENV"; fi
+          done
+      - uses: tauri-apps/tauri-action@v0
+        id: tauri
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           args: ${{ matrix.args }}
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
-          releaseName: ${{ github.ref_type == 'tag' && format('Astrall {0}', github.ref_name) || '' }}
+          tagName: ${{ env.RELEASE_TAG }}
+          releaseName: ${{ env.RELEASE_TAG && format('Astrall {0}', env.RELEASE_TAG) || '' }}
           releaseDraft: false
       - name: Instaladores como artefatos (ensaio)
-        if: github.ref_type != 'tag'
+        if: env.RELEASE_TAG == ''
         uses: actions/upload-artifact@v4
         with:
           name: astrall-${{ matrix.name }}
@@ -93,6 +113,8 @@ jobs:
       HAS_SIGNING: ${{ secrets.APPLE_API_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
